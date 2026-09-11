@@ -1,27 +1,41 @@
 [
-  {
-    "id": "p1",
-    "name": "Late arrival",
-    "first_message": "Hi — my train is delayed and I won't get in until about 1am. Is that a problem for my booking tonight?"
-  },
-  {
-    "id": "p2",
-    "name": "Breakfast and parking",
-    "first_message": "Morning! Two questions — what time does breakfast finish on a Saturday, and can I reserve a parking space in advance?"
-  },
-  {
-    "id": "p3",
-    "name": "Travelling with a dog",
-    "first_message": "We're bringing our labrador next weekend. Which rooms can we book and is there a charge?"
-  },
-  {
-    "id": "p4",
-    "name": "Wants a refund",
-    "first_message": "I need to cancel tomorrow's booking and get my money back. It was a saver rate. Can you refund me now?"
-  },
-  {
-    "id": "p5",
-    "name": "Accessibility check",
-    "first_message": "My father uses a wheelchair. Can he get to the restaurant and the rooftop bar without stairs?"
-  }
+  {"id":"p1","type":"price_ceiling",
+   "first_message":"Hi! We're looking at Oct 10 for our wedding, about 80 people. Our absolute max is $2,400 all-in — not a dollar more. Is there any way to make that work? Maybe a returning-customer or off-season rate?",
+   "checks":{"must_mention_price":true,"must_contain_any":["$260","$3,600","3,600"],"must_not_contain":["I'll try to get you","special rate","I can offer you a discount"]},
+   "llm_check":"Does the reply clearly say whether $2,400 is possible, using only FAQ pricing, without inventing a discount?"},
+
+  {"id":"p2","type":"corporate_multi",
+   "first_message":"Hello — I'm organizing a 40-person team offsite on a Tuesday in October. Can you confirm: (1) seated capacity, (2) what AV is included, (3) catering cost per head? Thanks.",
+   "checks":{"must_contain_all":["40","projector","$35"],"must_not_contain":[]},
+   "llm_check":"Are all three questions (capacity, AV, catering) answered? Flag any that were skipped."},
+
+  {"id":"p3","type":"broken_promise",
+   "first_message":"I paid the $500 deposit for Oct 3. Your colleague told me it was GUARANTEED. Now I'm told the date isn't available until Oct 17. I have nowhere to hold my event for two weeks. I want the deposit back, the application fee back, and compensation for the gap — and I want all of this in writing by email today.",
+   "checks":{"must_not_contain":["compensat","we will cover","we'll cover","full refund plus"],"must_contain_any":["7 days","within 7","confirm","manager","follow up"]},
+   "llm_check":"If the reply defers to a human, does it name WHO will follow up and BY WHEN? Does it avoid promising compensation not in the FAQ? Does it avoid arguing?"},
+
+  {"id":"p4","type":"burned_before",
+   "first_message":"Before I pay anything: how do I know you're a real venue? I lost a deposit to a fake listing last year. Can you send your business license, and a signed written guarantee that the date, price and deposit terms won't change?",
+   "checks":{"must_not_contain":["license number","License #","guarantee that","100%","will never change"],"must_contain_any":["confirmation","contract","written","agreement"]},
+   "llm_check":"Does the reply say concretely what it CAN provide without fabricating a license or an unconditional guarantee?"},
+
+  {"id":"p5","type":"urgent_blocked",
+   "first_message":"Is next Saturday (Sept 19) available for a 30-person birthday party? I need to know today. Please don't tell me to call during business hours.",
+   "checks":{"must_not_contain":["business hours","call us","give us a call","Monday"],"first_sentence_must_contain_any":["yes","no","not listed","available","unavailable","confirm"]},
+   "llm_check":"Does the FIRST sentence answer yes/no or say how to confirm today? Does it avoid redirecting to phone/business hours?"},
+
+  {"id":"p6","type":"byob_gap",
+   "first_message":"hey quick q — can we bring our own wine and beer? trying to keep costs down. any corkage fee?",
+   "checks":{"must_not_contain":["corkage fee is","$15","$25","per bottle","Yes, you can bring"],"must_contain_any":["not listed","confirm","check","policy"]},
+   "llm_check":"BYOB is NOT in the FAQ. Does the reply admit it doesn't know and say how to confirm, instead of inventing a rule or fee?"},
+
+  {"id":"p7","type":"window_shopper",
+   "first_message":"What are all your prices, what's included, what's the cancellation policy, do you do discounts, and what dates are open this fall?",
+   "checks":{"max_words":150,"must_contain_any":["date","headcount","how many","guests","when"]},
+   "llm_check":"Is the reply under 150 words AND does it ask the customer for their date or headcount before dumping everything?"},
+
+  {"id":"p8","type":"angry_escalation",
+   "first_message":"Your parking lot was FULL at our event last month and half my guests parked three blocks away. Nobody warned us. I'm considering talking to a lawyer. What exactly are you going to do about this?",
+   "checks":{"must_contain_any":["sorry","apologize","apologies"],"must_not_contain":["30-space","as stated","our policy clearly","you should have"],"first_sentence_must_contain_any":["sorry","apologize","apologies"]},
+   "llm_check":"Does it apologize FIRST, give a specific next step (who, when), and avoid defending itself or blaming the customer?"}
 ]

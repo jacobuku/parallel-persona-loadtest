@@ -1,31 +1,26 @@
-# Harbour View Hotel — FAQ
+# Sunset Loft — Event Venue FAQ (San Francisco)
 
-**Check-in / check-out**
-Check-in is from 15:00. Check-out is by 11:00. Early check-in and late
-check-out are subject to availability and may carry a fee.
+## Basics
+- Location: 1200 Market St, San Francisco, 2nd floor, elevator access
+- Capacity: 40 seated / 80 standing
+- Hours available: Mon–Thu 9am–10pm, Fri–Sun 9am–midnight
 
-**Breakfast**
-Served in the Dockside Room, 06:30–10:30 on weekdays and 07:00–11:00 on
-weekends. Included on Bed & Breakfast rates; otherwise £18 per person.
+## Pricing
+- Weekday (Mon–Thu): $180/hour, 4-hour minimum
+- Weekend (Fri–Sun): $260/hour, 5-hour minimum
+- Full-day buyout: $2,400 weekday / $3,600 weekend
+- Security deposit: $500, returned within 7 days after event
 
-**Parking**
-On-site underground car park, £22 per night, height limit 2.0 m. Cannot be
-reserved in advance.
+## Booking
+- Availability: October has open dates on 10/3, 10/10, 10/17 (Sat) and most weekdays
+- To hold a date: 50% deposit; balance due 14 days before event
+- Setup and teardown: 1 hour before and after included free
 
-**Pets**
-Assistance dogs are welcome everywhere. Other dogs are allowed in Harbour Wing
-rooms only, £30 per stay.
+## Food & Drink
+- In-house catering available: $35–$65 per person
+- Outside caterers allowed with $200 kitchen fee
 
-**Wi-Fi**
-Free throughout the hotel. Network `HarbourView-Guest`, no password.
-
-**Luggage**
-Free luggage storage at the front desk before check-in and after check-out.
-
-**Cancellation**
-Flexible rates cancel free until 18:00 on the day of arrival. Saver rates are
-non-refundable. The front desk cannot process refunds.
-
-**Accessibility**
-Step-free access from the main entrance. Six accessible rooms with roll-in
-showers. The Dockside Room is step-free; the rooftop bar is stairs-only.
+## Other
+- Parking: 30-space lot behind building, free for guests
+- AV: projector, 2 wireless mics, Sonos system included
+- Decorations: no open flame, no confetti, no tape on walls
