@@ -210,6 +210,69 @@ schema (`get_services()["tool_http_request"]["Pipe"]["schema"]`) has
 docs.rocketride.org describes a newer build than Cloud runs. Treat the HTTP tool
 as unrestricted; do not rely on the whitelist as a guardrail.
 
+### 11. The v1 persona run: architecture B holds at N=8 (measured)
+
+`run_v1.py`, 8 personas, one turn each, 2026-09-11. Concurrency gate opened at
+8 and was never downgraded -- **nothing rate limited at N=8**, neither
+RocketRide Cloud nor the Anthropic judge.
+
+| | |
+| --- | --- |
+| wall clock, all 8 turns | **81.0 s** |
+| sum of the 8 turns | 440.3 s |
+| slowest single turn | 81.0 s (p1) |
+
+Wall clock equals the slowest single turn, so the 8 turns really did overlap --
+architecture B (N separate `use()`/`send()` calls through `asyncio.gather`, one
+client each, fan-in in Python) scales the same way at N=8 as it did at N=3 in
+fact 8. Turn time is dominated by the pipeline (28-64 s); the whole Hotdata
+lifecycle costs 6.4-7.6 s of it.
+
+**Each persona gets its own throwaway database.** Because no agent tool runs on
+Cloud (fact 9), retrieval happens in Python but still goes through a database:
+create (1 h TTL) -> load `pricing` / `availability` / `venue_facts` -> run that
+persona's queries -> put the rows in the question -> load the reply back into
+`replies` -> drop. All 8 databases were dropped at the end of the run; the TTL
+is the backstop if a turn dies. `venue_db.py` holds the rows and the per-persona
+SQL.
+
+A query that returns **nothing** is part of the test, not a failure: p5 asks
+about a date that is not on the books and p6 about a BYOB policy the venue has
+never published. `format_retrieved()` renders those as an explicit "no rows"
+block, and the system prompt tells the agent that means *say so*, don't fill the
+gap. Both personas handled it correctly.
+
+### 12. Two verdicts per reply, and `must_not_contain` is advisory
+
+`grader.py` scores every reply twice and keeps both: `rule_pass` (the
+deterministic checks) and `llm_pass` (the persona's own `llm_check` question,
+judged by `claude-opus-5`). **`llm_pass` is the final verdict**; `rule_pass` is
+the cheap tripwire, and `agree` -- whether they reached the same answer -- is
+what tells you when the rule set needs work. On the v1 run they agreed 8/8.
+
+`must_not_contain` never fails a turn. Its needles are heuristics for phrasing
+that is *usually* wrong, and a correct reply can legitimately contain one -- in
+v1, p3 said "I can't promise compensation" (hit on `compensat`) and p4 said "I
+can't guarantee that nothing will change" (hit on `guarantee that`). Both are
+exactly right; both would have been false failures. They are recorded as
+`rule_flags` for review instead.
+
+**Word boundaries only where a substring misfires.** Matching is
+case-insensitive. Money and numbers get a trailing `\b` (`\$260\b` must not
+match `$2600`; `\b40\b` must not match inside `$2,400`) and short all-letter
+words get both (`\bno\b` must not match "nowhere"). Longer needles stay plain
+substrings, because some are deliberate prefixes -- p3's `compensat` is written
+to catch compensation/compensate.
+
+Worth knowing: **`$20` was dropped from p6 to stop it firing on the FAQ's own
+"$200 kitchen fee", but the boundary rule already prevents that** -- `\$20\b`
+does not match `$200`. The needle is gone as instructed; the collision it was
+removed for no longer existed.
+
+`must_mention_price` (in p1) is not one of the six supported check keys, so it
+is reported as **skipped** in the transcript rather than silently ignored.
+Nothing is lost: p1's `must_contain_any` already requires a real price.
+
 ---
 
 ## Telemetry
@@ -220,6 +283,12 @@ Benchmark and probe results go to the Hotdata database `loadtest_telemetry`
 - `loadtest_telemetry.public.runs` -- one row per benchmark run, `mode` column
   is `serial` / `A` / `B`. Written by `telemetry.record()` from `bench.py`.
 - `loadtest_telemetry.public.findings` -- one row per C/D probe result.
+- `loadtest_telemetry.public.persona_runs` -- one row per persona turn from
+  `run_v1.py`: grading (`rule_pass` / `llm_pass` / `agree` / `rule_flags`),
+  timings, and the whole database lifecycle (`db_create_s` ... `db_drop_s`,
+  `rows_retrieved`, `empty_results`). Declared with
+  `hotdata databases tables add persona_runs --database <id>` in the existing
+  telemetry database -- not a new one.
 
 That id lives in `.env` as `HOTDATA_TELEMETRY_DB_ID` and **the database is
 reused, never recreated** — it holds the accumulated A/B timings, and a new run

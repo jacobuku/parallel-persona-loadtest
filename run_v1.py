@@ -318,7 +318,9 @@ def write_transcripts(path: Path, results: list[TurnResult], ctx: dict[str, Any]
             if r.rules and r.rules.skipped:
                 lines.append(f"- skipped (not in the grader schema): "
                              + ", ".join(f"`{k}`" for k in r.rules.skipped))
-            if r.rules and r.rules.graded_first_sentence:
+            # Only meaningful when a first_sentence rule actually ran; otherwise the
+            # "sentence" is just however far the reply gets before a full stop.
+            if r.rules and (p.get("checks") or {}).get("first_sentence_must_contain_any"):
                 lines.append(f"- first sentence graded: _{r.rules.graded_first_sentence}_")
             lines += ["", "### llm result", ""]
             verdict = "—" if r.llm_pass is None else ("**PASS**" if r.llm_pass else "**FAIL**")
