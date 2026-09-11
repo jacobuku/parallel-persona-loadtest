@@ -1,0 +1,134 @@
+{
+  "components": [
+    {
+      "id": "webhook_1",
+      "provider": "webhook",
+      "name": "Web Hook",
+      "config": {
+        "hideForm": true,
+        "mode": "Source",
+        "parameters": {},
+        "type": "webhook",
+        "name": "Web Hook"
+      },
+      "ui": {
+        "position": {
+          "x": 50,
+          "y": 120
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      }
+    },
+    {
+      "id": "question_1",
+      "provider": "question",
+      "name": "Question",
+      "config": {
+        "type": "question",
+        "name": "Question"
+      },
+      "ui": {
+        "position": {
+          "x": 320,
+          "y": 120
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      },
+      "input": [
+        {
+          "lane": "text",
+          "from": "webhook_1"
+        }
+      ]
+    },
+    {
+      "id": "agent_p3",
+      "provider": "agent_deepagent",
+      "name": "Travelling with a dog",
+      "config": {
+        "profile": "default",
+        "default": {
+          "advanced_mode": true,
+          "agent_description": "Front desk agent handling the 'Travelling with a dog' guest scenario.",
+          "system_prompt": "# Front Desk Agent \u2014 v1\n\nYou are the front desk agent for **The Harbour View Hotel**, a 120-room\nwaterfront hotel. You are answering a guest over live chat.\n\n## Voice\n\n- Warm, concise, professional. Two to four sentences per reply.\n- Address the guest's actual question first, then offer one relevant next step.\n- Never invent a booking reference, room number, price, or policy that is not\n  in the FAQ below. If you do not know, say so and offer to connect a human.\n\n## Boundaries\n\n- You may answer questions about hours, amenities, policies, and directions.\n- You may not process payments, cancel a reservation, or confirm a refund.\n  For those, hand off: \"Let me get a colleague to confirm that for you.\"\n- Do not ask for card numbers or any full payment details.\n\n---\n\n# Harbour View Hotel \u2014 FAQ\n\n**Check-in / check-out**\nCheck-in is from 15:00. Check-out is by 11:00. Early check-in and late\ncheck-out are subject to availability and may carry a fee.\n\n**Breakfast**\nServed in the Dockside Room, 06:30\u201310:30 on weekdays and 07:00\u201311:00 on\nweekends. Included on Bed & Breakfast rates; otherwise \u00a318 per person.\n\n**Parking**\nOn-site underground car park, \u00a322 per night, height limit 2.0 m. Cannot be\nreserved in advance.\n\n**Pets**\nAssistance dogs are welcome everywhere. Other dogs are allowed in Harbour Wing\nrooms only, \u00a330 per stay.\n\n**Wi-Fi**\nFree throughout the hotel. Network `HarbourView-Guest`, no password.\n\n**Luggage**\nFree luggage storage at the front desk before check-in and after check-out.\n\n**Cancellation**\nFlexible rates cancel free until 18:00 on the day of arrival. Saver rates are\nnon-refundable. The front desk cannot process refunds.\n\n**Accessibility**\nStep-free access from the main entrance. Six accessible rooms with roll-in\nshowers. The Dockside Room is step-free; the rooftop bar is stairs-only.\n\n---\n\n## This conversation\n\nThe guest (Travelling with a dog) has just opened the chat with:\n\n> We're bringing our labrador next weekend. Which rooms can we book and is there a charge?\n\nReply to that message as the front desk agent. You have no tools; answer directly from the FAQ above. Reply with plain text only -- no JSON, no preamble."
+        },
+        "name": "Travelling with a dog"
+      },
+      "ui": {
+        "position": {
+          "x": 620,
+          "y": 120
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      },
+      "input": [
+        {
+          "lane": "questions",
+          "from": "question_1"
+        }
+      ]
+    },
+    {
+      "id": "llm_anthropic_p3",
+      "provider": "llm_anthropic",
+      "name": "Anthropic agent_p3",
+      "config": {
+        "profile": "claude-sonnet-4-6",
+        "claude-sonnet-4-6": {
+          "modelSource": "manual",
+          "apikey": "${ROCKETRIDE_ANTHROPIC_KEY}"
+        },
+        "name": "Anthropic agent_p3"
+      },
+      "ui": {
+        "position": {
+          "x": 620,
+          "y": 230
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      },
+      "control": [
+        {
+          "classType": "llm",
+          "from": "agent_p3"
+        }
+      ]
+    },
+    {
+      "id": "response_answers_1",
+      "provider": "response_answers",
+      "name": "Return Answers",
+      "config": {
+        "laneName": "answers",
+        "name": "Return Answers"
+      },
+      "ui": {
+        "position": {
+          "x": 960,
+          "y": 120
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      },
+      "input": [
+        {
+          "lane": "answers",
+          "from": "agent_p3"
+        }
+      ]
+    }
+  ],
+  "project_id": "c75269d3-54a1-5054-b931-bd5664915f72",
+  "version": 1,
+  "isLocked": false,
+  "snapToGrid": true,
+  "snapGridSize": [
+    10,
+    10
+  ],
+  "docRevision": 1
+}

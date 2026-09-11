@@ -6,3 +6,4 @@ node_modules/
 *.csv
 .gstack/
 .diag/
+.DS_Store
