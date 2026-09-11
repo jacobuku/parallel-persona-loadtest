@@ -1,0 +1,134 @@
+{
+  "components": [
+    {
+      "id": "webhook_1",
+      "provider": "webhook",
+      "name": "Web Hook",
+      "config": {
+        "hideForm": true,
+        "mode": "Source",
+        "parameters": {},
+        "type": "webhook",
+        "name": "Web Hook"
+      },
+      "ui": {
+        "position": {
+          "x": 50,
+          "y": 200
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      }
+    },
+    {
+      "id": "question_1",
+      "provider": "question",
+      "name": "Question",
+      "config": {
+        "type": "question",
+        "name": "Question"
+      },
+      "ui": {
+        "position": {
+          "x": 330,
+          "y": 200
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      },
+      "input": [
+        {
+          "lane": "text",
+          "from": "webhook_1"
+        }
+      ]
+    },
+    {
+      "id": "agent_min",
+      "provider": "agent_deepagent",
+      "name": "Minimal Responder",
+      "config": {
+        "profile": "default",
+        "default": {
+          "advanced_mode": true,
+          "agent_description": "Minimal responder — answers the user's text directly in one LLM turn. No tools, no delegation.",
+          "system_prompt": "You are a minimal echo-and-answer assistant used to smoke-test a RocketRide pipeline.\n\nYou have NO tools and NO subagents. Do not attempt to call any tool. Answer the user's message directly from your own knowledge in a single turn.\n\nKeep replies short — at most three sentences. Reply with plain text only."
+        },
+        "name": "Minimal Responder"
+      },
+      "ui": {
+        "position": {
+          "x": 600,
+          "y": 200
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      },
+      "input": [
+        {
+          "lane": "questions",
+          "from": "question_1"
+        }
+      ]
+    },
+    {
+      "id": "llm_anthropic_min",
+      "provider": "llm_anthropic",
+      "name": "Anthropic",
+      "config": {
+        "profile": "claude-sonnet-4-6",
+        "claude-sonnet-4-6": {
+          "modelSource": "manual",
+          "apikey": "${ROCKETRIDE_ANTHROPIC_KEY}"
+        },
+        "name": "Anthropic"
+      },
+      "ui": {
+        "position": {
+          "x": 600,
+          "y": 360
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      },
+      "control": [
+        {
+          "classType": "llm",
+          "from": "agent_min"
+        }
+      ]
+    },
+    {
+      "id": "response_answers_1",
+      "provider": "response_answers",
+      "name": "Return Answers",
+      "config": {
+        "laneName": "answers",
+        "name": "Return Answers"
+      },
+      "ui": {
+        "position": {
+          "x": 870,
+          "y": 200
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      },
+      "input": [
+        {
+          "lane": "answers",
+          "from": "agent_min"
+        }
+      ]
+    }
+  ],
+  "project_id": "9f2a4c61-8d3e-4b07-9a15-2c6e7f018b44",
+  "version": 1,
+  "isLocked": false,
+  "snapToGrid": true,
+  "snapGridSize": [
+    10,
+    10
+  ],
+  "docRevision": 1
+}
