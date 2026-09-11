@@ -112,9 +112,7 @@
         "allowDELETE": false,
         "allowHEAD": false,
         "allowOPTIONS": false,
-        "urlWhitelist": [
-          "^https://api\\.hotdata\\.dev(?::[0-9]+)?(?:/|$)"
-        ],
+        "whitelistPattern": "^https://api\\.hotdata\\.dev(?::[0-9]+)?(?:/|$)",
         "rateLimitPerSecond": 10,
         "rateLimitPerMinute": 100,
         "maxConcurrentRequests": 5,

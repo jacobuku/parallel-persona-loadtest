@@ -86,7 +86,7 @@ the interpreter has no bundle of its own. Process-scoped; a caller-set
 `certifi` is therefore a real dependency even though nothing imports it
 transitively — it is pinned in `requirements.txt`.
 
-### 8. Topological fan-out does NOT run agent branches concurrently (measured)
+### 8. Topological fan-out does NOT parallelize; asyncio.gather does (measured)
 
 A `.pipe` with one `question` node fanning out to N `agent_deepagent`
 branches, fanning back into one `response_answers`, executes those branches
@@ -110,42 +110,67 @@ concurrently across threads" — that may hold for streaming data nodes but not
 for `agent_deepagent` branches on this deployment. Unresolved; do not assume
 topological fan-out gives concurrency without measuring.
 
-Per the docs, the parallelism that *is* documented to work is **within** one
-agent: `agent_rocketride` runs a wave of tool calls concurrently (max 8
-threads), and any agent's multiple independent tool calls in one reasoning step
-are fanned out automatically.
+**What actually works: concurrency from the client.** Running N single-branch
+pipelines through `asyncio.gather` (N separate `use()`/`send()` calls, one
+client each, fan-in in Python) is flat in N:
 
-### 9. `tool_http_request` registers but is never executed by `agent_deepagent` (unresolved)
+| mode                        | N=2     | N=3     |
+| --------------------------- | ------- | ------- |
+| serial (one after another)  | 59.2 s  | 86.2 s  |
+| A: one N-branch pipe        | 47.6 s  | 63.4 s  |
+| **B: asyncio.gather**       | **32.7 s** | **33.4 s** |
 
-An `agent_deepagent` with a `tool_http_request` control-attached
-(`"classType": "tool"`) discovers the tool but never runs it. The agent's
-final answer is the tool call itself, emitted onto the answers lane:
+B's wall clock is roughly the slowest single branch and barely moves from N=2 to
+N=3 -- real N-way concurrency. A still grows with N. Use B. Measured by
+`bench.py`; every run is appended to the Hotdata telemetry database.
+
+A dedicated `llm_anthropic` node per branch was never the issue -- `gen_pipe.py`
+has always emitted one per branch (1:1, verified), and A is still serialized.
+
+**Each pipe needs its own `project_id`.** The engine keys a running pipeline by
+`project_id`; N pipes sharing one id cannot run concurrently and the second
+`use()` fails with `Pipeline is already running.` `gen_pipe.py` derives a
+per-pipe id with `uuid5`.
+
+### 9. No agent tool executes on RocketRide Cloud (unresolved)
+
+An `agent_deepagent` discovers its tools but never runs them. The agent's final
+answer is the tool call itself, emitted onto the answers lane:
 
 ```
-{"type":"tool_call","name":"tool_http_probe.http_request","args":{...}}
+{"type":"tool_call","name":"<nodeId>.http_request","args":{...}}
 ```
 
 Runtime flow events (`pipelineTraceLevel="full"`, `set_events([...,"flow",...])`)
-show exactly where it stops:
+show where it stops -- `tool.query` fires once and returns the tool descriptor,
+then the LLM is asked three times, and no `tool.execute` ever reaches the node:
 
 ```
-seq 21 enter tool_http_probe      invoke=tool op=tool.query     <- discovery
-seq 22 leave tool_http_probe      invoke=tool op=tool.query     <- returns the http_request descriptor
+seq 21 enter tool_http_probe      invoke=tool op=tool.query   <- discovery
+seq 22 leave tool_http_probe      invoke=tool op=tool.query   <- returns the descriptor
 seq 26 enter llm_anthropic_probe  invoke=llm  op=ask
-seq 37 leave llm_anthropic_probe
-seq 38 enter llm_anthropic_probe  invoke=llm  op=ask            <- 3 LLM calls total
-seq 59 leave llm_anthropic_probe
-seq 61 enter response_answers_1                                 <- tool_call goes out as the answer
+seq 38 enter llm_anthropic_probe  invoke=llm  op=ask          <- 3 LLM calls
+seq 49 enter llm_anthropic_probe  invoke=llm  op=ask
+seq 61 enter response_answers_1                               <- tool_call goes out as the answer
 ```
 
-`tool.query` fires once and returns the tool descriptor, so registration and
-discovery work. There is **no** `tool.execute`/`tool.call` invoke on the node,
-ever. Rewriting the system prompt (correct `<nodeId>.http_request` name,
-"invoke, do not describe") changed nothing — byte-identical output.
+**This is not specific to `tool_http_request`.** Copying the workshop's
+`agent_deepagent` + `llm_anthropic` config verbatim and swapping in
+`tool_python` gives byte-identical behaviour: `tool.query` only, no
+`tool.execute`. `client.validate()` reports the pipeline valid. Rewriting the
+system prompt changes nothing.
 
-`client.validate()` reports the pipeline as valid. Not a prompting problem and
-not a whitelist rejection. Unresolved; do not build on agent-driven HTTP until
-it is understood.
+**`tool_shell` does not exist on Cloud at all.** It appears in `get_services()`
+but with `plans`, `capabilities` and `actions` all `null` -- a stub. `use()`
+rejects it:
+
+```
+RuntimeError: The service tool_shell was not found
+```
+
+So the workshop's coding-agent pipelines cannot run on Cloud as written; they
+assume a local engine. Do not build on agent tool use here until this is
+understood.
 
 The Hotdata HTTP contract itself is confirmed working by curl:
 
@@ -165,15 +190,34 @@ agent repeated the Hotdata bearer token verbatim in its reply. Never print an
 agent answer without masking known secret values first
 (`redact()` in `smoke_hotdata.py`).
 
-**`urlWhitelist` did not take effect.** With `"urlWhitelist": ["^https://api\\.hotdata\\.dev(?::[0-9]+)?(?:/|$)"]`
-set, the engine still warned:
+**The URL whitelist cannot be set at all on this deployment.** Every shape is
+ignored -- escaped+anchored array, plain-host array, and nested under a
+`profile` key. The engine always warns:
 
 ```
 Warning*URL whitelist is empty - all URLs will be allowed*/opt/rocketride/nodes/tool_http_request/IGlobal.py:137
 ```
 
-So the array form was ignored; the node docs also list a separate scalar
-`whitelistPattern` field. Untested which one the engine actually reads.
+The docs' scalar `whitelistPattern` does not help: the **deployed** node's
+schema (`get_services()["tool_http_request"]["Pipe"]["schema"]`) has
+`urlWhitelist` and no `whitelistPattern` or `serverName` at all, so
+docs.rocketride.org describes a newer build than Cloud runs. Treat the HTTP tool
+as unrestricted; do not rely on the whitelist as a guardrail.
+
+---
+
+## Telemetry
+
+Benchmark and probe results go to the Hotdata database `loadtest_telemetry`
+(id `dbidpeq7ewvmsqwtn1n1z20lix82yy`, created with `--expires-at 3d` per fact 7):
+
+- `loadtest_telemetry.public.runs` -- one row per benchmark run, `mode` column
+  is `serial` / `A` / `B`. Written by `telemetry.record()` from `bench.py`.
+- `loadtest_telemetry.public.findings` -- one row per C/D probe result.
+
+Instant databases reject `INSERT`/DDL over the query API, so rows are staged to
+a local JSON file and loaded with
+`hotdata databases load --catalog <catalog> --table <table> --append`.
 
 ---
 

@@ -48,7 +48,10 @@ DEFAULT_WS = "work9z04fz71945u9zjy1y586l5nuw"
 
 HOTDATA_HOST = "api.hotdata.dev"
 # Literal host + explicit boundary, the form the node's whitelist grammar accepts.
-URL_WHITELIST = [r"^https://api\.hotdata\.dev(?::[0-9]+)?(?:/|$)"]
+# Set via the scalar `whitelistPattern`, NOT the `urlWhitelist` array: with the
+# array form the engine still warned "URL whitelist is empty - all URLs will be
+# allowed", i.e. it was ignored. See NOTES.md fact 10.
+WHITELIST_PATTERN = r"^https://api\.hotdata\.dev(?::[0-9]+)?(?:/|$)"
 
 # Only the database knows this: smoketest3.public.t holds x = 1, 2, 3 -> 6.
 ASK = (
@@ -153,7 +156,7 @@ def build_pipe() -> dict[str, Any]:
                     "allowGET": True, "allowPOST": True,
                     "allowPUT": False, "allowPATCH": False, "allowDELETE": False,
                     "allowHEAD": False, "allowOPTIONS": False,
-                    "urlWhitelist": URL_WHITELIST,
+                    "whitelistPattern": WHITELIST_PATTERN,
                     "rateLimitPerSecond": 10,
                     "rateLimitPerMinute": 100,
                     "maxConcurrentRequests": 5,
