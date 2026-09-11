@@ -1,0 +1,27 @@
+[
+  {
+    "id": "p1",
+    "name": "Late arrival",
+    "first_message": "Hi — my train is delayed and I won't get in until about 1am. Is that a problem for my booking tonight?"
+  },
+  {
+    "id": "p2",
+    "name": "Breakfast and parking",
+    "first_message": "Morning! Two questions — what time does breakfast finish on a Saturday, and can I reserve a parking space in advance?"
+  },
+  {
+    "id": "p3",
+    "name": "Travelling with a dog",
+    "first_message": "We're bringing our labrador next weekend. Which rooms can we book and is there a charge?"
+  },
+  {
+    "id": "p4",
+    "name": "Wants a refund",
+    "first_message": "I need to cancel tomorrow's booking and get my money back. It was a saver rate. Can you refund me now?"
+  },
+  {
+    "id": "p5",
+    "name": "Accessibility check",
+    "first_message": "My father uses a wheelchair. Can he get to the restaurant and the rooftop bar without stairs?"
+  }
+]
