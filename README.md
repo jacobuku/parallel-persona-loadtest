@@ -104,3 +104,8 @@ Useful flags: `--rate-limit-floor 4` (concurrency the gate drops to on the first
 ```
 
 `NOTES.md` holds the verified environment facts — read it before changing anything.
+
+## Team
+
+- LJ — architecture, pipeline and telemetry implementation
+- Jolin — persona design, evaluation rubric, manual audit of the grader
