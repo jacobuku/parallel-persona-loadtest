@@ -34,6 +34,12 @@ The LLM judge disagreed on p7: the agent did ask for date and headcount, but onl
 price first. Rules can check length and keyword presence; they cannot check ordering. The prompt fix
 cured the symptom our rules could measure, not the behaviour underneath.
 
+Handoff rate: 7/8 in v1, 7/8 in v2 — unchanged. The prompt change affected length and ordering,
+not the handoff behaviour. Root causes split two ways: the data genuinely lacks the answer
+(p5 date, p6 corkage, p7 cancellation/discount — retrieval returned no rows) and the request
+exceeds front-desk authority (p3 refund, p4 license, p8 compensation). Neither is fixable by wording.
+For a small business this means eight inbound customers produce seven emails to the owner.
+
 ## Running it
 
 ### Setup

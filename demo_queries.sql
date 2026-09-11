@@ -1,10 +1,10 @@
--- demo_queries.sql — four queries to run live against the telemetry database.
+-- demo_queries.sql — five queries to run live against the telemetry database.
 --
 --   hotdata databases query -d $HOTDATA_TELEMETRY_DB_ID "<query>" -o table
 --
 -- Paste the SELECT only, NOT the -- comment above it: the CLI's argument parser
 -- sees a string starting with "--" as a flag and rejects it. (A "--" separator
--- does not help; it is consumed as the SQL argument.) All four were verified
+-- does not help; it is consumed as the SQL argument.) All five were verified
 -- against the live database with the comments stripped.
 --
 -- Table: loadtest_telemetry.public.persona_runs — one row per persona turn,
@@ -68,3 +68,38 @@ SELECT prompt_version,
 FROM loadtest_telemetry.public.persona_runs
 GROUP BY prompt_version
 ORDER BY prompt_version;
+
+
+-- 5. Handoff rate per persona: who got punted to the events manager, v1 vs v2.
+--    7/8 in both versions -- p2 is the only persona the agent answers on its own,
+--    and the v1 -> v2 prompt change moved word counts, not handoffs.
+--
+--    The flags are literals, not a column: persona_runs stores reply_words but not
+--    the reply text (run_v1.py writes the reply only into the persona's own
+--    throwaway database, which is dropped at the end of the turn), so "did it hand
+--    off" cannot be computed in SQL. They are read off transcripts_v1.md /
+--    transcripts_v2.md, where every handoff reply contains both "events manager"
+--    and "email you today". Joining them to persona_runs still makes the row live:
+--    the word counts and the 2-rows-per-persona coverage come from the table, so a
+--    persona missing from a run, or a re-run with different replies, shows up here.
+SELECT h.persona_id,
+       h.persona_type,
+       h.v1_handoff,
+       h.v2_handoff,
+       h.deferred_question,
+       MAX(CASE WHEN r.prompt_version = 'v1' THEN r.reply_words END) AS v1_words,
+       MAX(CASE WHEN r.prompt_version = 'v2' THEN r.reply_words END) AS v2_words,
+       COUNT(*)                                                      AS rows_matched
+FROM (VALUES
+        ('p1', 'price_ceiling',    true,  true,  'whether any discount exists'),
+        ('p2', 'corporate_multi',  false, false, '(none - answered in full)'),
+        ('p3', 'broken_promise',   true,  true,  'refund + written response'),
+        ('p4', 'burned_before',    true,  true,  'business licence + signed terms'),
+        ('p5', 'urgent_blocked',   true,  true,  'is 9/19 available'),
+        ('p6', 'byob_gap',         true,  true,  'corkage / BYOB policy'),
+        ('p7', 'window_shopper',   true,  true,  'cancellation policy + discounts'),
+        ('p8', 'angry_escalation', true,  true,  'parking complaint + remedy')
+     ) AS h(persona_id, persona_type, v1_handoff, v2_handoff, deferred_question)
+JOIN loadtest_telemetry.public.persona_runs r ON r.persona_id = h.persona_id
+GROUP BY h.persona_id, h.persona_type, h.v1_handoff, h.v2_handoff, h.deferred_question
+ORDER BY h.persona_id;
