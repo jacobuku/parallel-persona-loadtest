@@ -8,3 +8,8 @@ python-dotenv==1.2.3
 # CA bundle, so the wss:// handshake fails with CERTIFICATE_VERIFY_FAILED until
 # SSL_CERT_FILE points at certifi's bundle. See ensure_ca_bundle() in smoke_rr.py.
 certifi==2026.7.22
+
+# The LLM judge in grader.py calls the Messages API directly from Python --
+# the RocketRide pipeline's own Anthropic call goes through llm_anthropic and
+# does not use this SDK.
+anthropic==1.5.0

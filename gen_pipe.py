@@ -85,8 +85,13 @@ def build_system_prompt(frontdesk: str, faq: str, persona: dict[str, Any]) -> st
         f"## This conversation\n\n"
         f"The guest ({persona.get('name') or persona['id']}) has just opened the chat with:\n\n"
         f"> {persona['first_message'].strip()}\n\n"
-        f"Reply to that message as the front desk agent. You have no tools; answer "
-        f"directly from the FAQ above. Reply with plain text only -- no JSON, no preamble."
+        f"Reply to that message as the front desk agent.\n\n"
+        f"The incoming message on this turn carries the rows retrieved from the venue "
+        f"database for this enquiry. Treat those rows as the current truth and answer "
+        f"from them together with the FAQ above. A block that says it has no rows means "
+        f"nothing is on file for that question -- say so and offer to have it confirmed; "
+        f"do not fill the gap with a number or a policy of your own.\n\n"
+        f"You have no tools of your own. Reply with plain text only -- no JSON, no preamble."
     )
 
 
@@ -154,7 +159,7 @@ def build_pipeline(personas: list[dict[str, Any]], faq: str, frontdesk: str) -> 
     for i, persona in enumerate(personas):
         y = Y_TOP + i * Y_STEP
         agent_id = f"agent_{persona['id']}"
-        name = persona.get("name") or persona["id"]
+        name = persona.get("name") or persona.get("type") or persona["id"]
         components.append(agent_node(agent_id, name, build_system_prompt(frontdesk, faq, persona), y))
         components.append(llm_node(f"llm_anthropic_{persona['id']}", agent_id, y))
         # FAN-IN: one input entry per branch, all on the `answers` lane.
