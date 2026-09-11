@@ -1,0 +1,171 @@
+{
+  "components": [
+    {
+      "id": "webhook_1",
+      "provider": "webhook",
+      "name": "Web Hook",
+      "config": {
+        "hideForm": true,
+        "mode": "Source",
+        "parameters": {},
+        "type": "webhook",
+        "name": "Web Hook"
+      },
+      "ui": {
+        "position": {
+          "x": 50,
+          "y": 200
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      }
+    },
+    {
+      "id": "question_1",
+      "provider": "question",
+      "name": "Question",
+      "config": {
+        "type": "question",
+        "name": "Question"
+      },
+      "ui": {
+        "position": {
+          "x": 320,
+          "y": 200
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      },
+      "input": [
+        {
+          "lane": "text",
+          "from": "webhook_1"
+        }
+      ]
+    },
+    {
+      "id": "agent_hotdata",
+      "provider": "agent_deepagent",
+      "name": "Hotdata Probe",
+      "config": {
+        "profile": "default",
+        "default": {
+          "advanced_mode": true,
+          "agent_description": "Queries a Hotdata database over HTTP and reports the result.",
+          "system_prompt": "You are a database probe agent. You answer questions by querying a Hotdata database over HTTP.\n\n=== Your tool ===\n\nYou have one tool, registered as `tool_http_probe.http_request`. CALL IT. Do not\ndescribe the call, do not print the call as JSON, do not plan -- actually invoke\nthe tool and wait for its response.\n\nUse these arguments:\n\n- method: POST\n- url: https://api.hotdata.dev/v1/query\n- bearer_token: ${ROCKETRIDE_HOTDATA_KEY}\n- headers: X-Workspace-Id = ${ROCKETRIDE_HOTDATA_WS}, X-Database-Id = ${ROCKETRIDE_DB_P1}\n- body_json: an object whose `sql` key is: SELECT SUM(x) AS total FROM smoketest3.public.t\n\nThe tool returns JSON shaped like {\"columns\": [\"total\"], \"rows\": [[6]]}. The\nnumber you want is at rows[0][0].\n\n=== Rules ===\n\n- Invoke the tool exactly once, then answer from what it returned.\n- NEVER repeat the bearer token, any header value, or any credential in your\n  reply. Report only the number.\n- Do not invent a number. If the call fails, report the HTTP status and the\n  error body, with any credential removed.\n- Reply with plain text only -- no JSON, no preamble.\n"
+        },
+        "name": "Hotdata Probe"
+      },
+      "ui": {
+        "position": {
+          "x": 620,
+          "y": 200
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      },
+      "input": [
+        {
+          "lane": "questions",
+          "from": "question_1"
+        }
+      ]
+    },
+    {
+      "id": "llm_anthropic_probe",
+      "provider": "llm_anthropic",
+      "name": "Anthropic",
+      "config": {
+        "profile": "claude-sonnet-4-6",
+        "claude-sonnet-4-6": {
+          "modelSource": "manual",
+          "apikey": "${ROCKETRIDE_ANTHROPIC_KEY}"
+        },
+        "name": "Anthropic"
+      },
+      "ui": {
+        "position": {
+          "x": 560,
+          "y": 380
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      },
+      "control": [
+        {
+          "classType": "llm",
+          "from": "agent_hotdata"
+        }
+      ]
+    },
+    {
+      "id": "tool_http_probe",
+      "provider": "tool_http_request",
+      "name": "HTTP",
+      "config": {
+        "type": "tool_http_request",
+        "serverName": "http",
+        "allowGET": true,
+        "allowPOST": true,
+        "allowPUT": false,
+        "allowPATCH": false,
+        "allowDELETE": false,
+        "allowHEAD": false,
+        "allowOPTIONS": false,
+        "urlWhitelist": [
+          "^https://api\\.hotdata\\.dev(?::[0-9]+)?(?:/|$)"
+        ],
+        "rateLimitPerSecond": 10,
+        "rateLimitPerMinute": 100,
+        "maxConcurrentRequests": 5,
+        "name": "HTTP"
+      },
+      "ui": {
+        "position": {
+          "x": 700,
+          "y": 380
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      },
+      "control": [
+        {
+          "classType": "tool",
+          "from": "agent_hotdata"
+        }
+      ]
+    },
+    {
+      "id": "response_answers_1",
+      "provider": "response_answers",
+      "name": "Return Answers",
+      "config": {
+        "laneName": "answers",
+        "name": "Return Answers"
+      },
+      "ui": {
+        "position": {
+          "x": 960,
+          "y": 200
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      },
+      "input": [
+        {
+          "lane": "answers",
+          "from": "agent_hotdata"
+        }
+      ]
+    }
+  ],
+  "project_id": "5a1d9e73-2b48-4c6f-8e90-71fd3a0c6b25",
+  "version": 1,
+  "isLocked": false,
+  "snapToGrid": true,
+  "snapGridSize": [
+    10,
+    10
+  ],
+  "docRevision": 1
+}

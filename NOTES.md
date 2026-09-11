@@ -115,6 +115,66 @@ agent: `agent_rocketride` runs a wave of tool calls concurrently (max 8
 threads), and any agent's multiple independent tool calls in one reasoning step
 are fanned out automatically.
 
+### 9. `tool_http_request` registers but is never executed by `agent_deepagent` (unresolved)
+
+An `agent_deepagent` with a `tool_http_request` control-attached
+(`"classType": "tool"`) discovers the tool but never runs it. The agent's
+final answer is the tool call itself, emitted onto the answers lane:
+
+```
+{"type":"tool_call","name":"tool_http_probe.http_request","args":{...}}
+```
+
+Runtime flow events (`pipelineTraceLevel="full"`, `set_events([...,"flow",...])`)
+show exactly where it stops:
+
+```
+seq 21 enter tool_http_probe      invoke=tool op=tool.query     <- discovery
+seq 22 leave tool_http_probe      invoke=tool op=tool.query     <- returns the http_request descriptor
+seq 26 enter llm_anthropic_probe  invoke=llm  op=ask
+seq 37 leave llm_anthropic_probe
+seq 38 enter llm_anthropic_probe  invoke=llm  op=ask            <- 3 LLM calls total
+seq 59 leave llm_anthropic_probe
+seq 61 enter response_answers_1                                 <- tool_call goes out as the answer
+```
+
+`tool.query` fires once and returns the tool descriptor, so registration and
+discovery work. There is **no** `tool.execute`/`tool.call` invoke on the node,
+ever. Rewriting the system prompt (correct `<nodeId>.http_request` name,
+"invoke, do not describe") changed nothing — byte-identical output.
+
+`client.validate()` reports the pipeline as valid. Not a prompting problem and
+not a whitelist rejection. Unresolved; do not build on agent-driven HTTP until
+it is understood.
+
+The Hotdata HTTP contract itself is confirmed working by curl:
+
+```
+POST https://api.hotdata.dev/v1/query
+Authorization: Bearer <HOTDATA_API_KEY>
+X-Workspace-Id: <workspace id>
+X-Database-Id:  <database id>
+{"sql": "SELECT SUM(x) AS total FROM smoketest3.public.t"}   -> 200, rows [[6]]
+```
+
+### 10. Two traps when handing an agent a credential
+
+**The agent will echo it.** `${...}` substitution works inside `system_prompt`
+text, not just config fields, so a key placed there reaches the LLM -- and the
+agent repeated the Hotdata bearer token verbatim in its reply. Never print an
+agent answer without masking known secret values first
+(`redact()` in `smoke_hotdata.py`).
+
+**`urlWhitelist` did not take effect.** With `"urlWhitelist": ["^https://api\\.hotdata\\.dev(?::[0-9]+)?(?:/|$)"]`
+set, the engine still warned:
+
+```
+Warning*URL whitelist is empty - all URLs will be allowed*/opt/rocketride/nodes/tool_http_request/IGlobal.py:137
+```
+
+So the array form was ignored; the node docs also list a separate scalar
+`whitelistPattern` field. Untested which one the engine actually reads.
+
 ---
 
 ## Hotdata
