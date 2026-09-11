@@ -7,3 +7,4 @@ node_modules/
 .gstack/
 .diag/
 .DS_Store
+.rocketride/
