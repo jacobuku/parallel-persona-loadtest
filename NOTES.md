@@ -86,6 +86,35 @@ the interpreter has no bundle of its own. Process-scoped; a caller-set
 `certifi` is therefore a real dependency even though nothing imports it
 transitively — it is pinned in `requirements.txt`.
 
+### 8. Topological fan-out does NOT run agent branches concurrently (measured)
+
+A `.pipe` with one `question` node fanning out to N `agent_deepagent`
+branches, fanning back into one `response_answers`, executes those branches
+**sequentially**. Measured against RocketRide Cloud with `loadtest.pipe`:
+
+| Run                         | Wall clock |
+| --------------------------- | ---------- |
+| serial, 1 branch (p1)       | 21.4 s     |
+| serial, 1 branch (p2)       | 20.5 s     |
+| serial total, N=2           | 41.9 s     |
+| **parallel pipe, N=2**      | **46.0 s** |
+| parallel pipe, N=2, threads=4 | 46.2 s   |
+| **parallel pipe, N=3**      | **66.8 s** |
+
+Wall clock scales linearly with N (~21 s per branch), and the N-branch pipe is
+slightly *slower* than running the branches one at a time — so the fan-out buys
+nothing. `use(threads=4)` makes no difference.
+
+This contradicts the docs' execution-model claim that "independent branches run
+concurrently across threads" — that may hold for streaming data nodes but not
+for `agent_deepagent` branches on this deployment. Unresolved; do not assume
+topological fan-out gives concurrency without measuring.
+
+Per the docs, the parallelism that *is* documented to work is **within** one
+agent: `agent_rocketride` runs a wave of tool calls concurrently (max 8
+threads), and any agent's multiple independent tool calls in one reasoning step
+are fanned out automatically.
+
 ---
 
 ## Hotdata
