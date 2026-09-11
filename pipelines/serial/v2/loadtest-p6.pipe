@@ -1,0 +1,134 @@
+{
+  "components": [
+    {
+      "id": "webhook_1",
+      "provider": "webhook",
+      "name": "Web Hook",
+      "config": {
+        "hideForm": true,
+        "mode": "Source",
+        "parameters": {},
+        "type": "webhook",
+        "name": "Web Hook"
+      },
+      "ui": {
+        "position": {
+          "x": 50,
+          "y": 120
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      }
+    },
+    {
+      "id": "question_1",
+      "provider": "question",
+      "name": "Question",
+      "config": {
+        "type": "question",
+        "name": "Question"
+      },
+      "ui": {
+        "position": {
+          "x": 320,
+          "y": 120
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      },
+      "input": [
+        {
+          "lane": "text",
+          "from": "webhook_1"
+        }
+      ]
+    },
+    {
+      "id": "agent_p6",
+      "provider": "agent_deepagent",
+      "name": "byob_gap",
+      "config": {
+        "profile": "default",
+        "default": {
+          "advanced_mode": true,
+          "agent_description": "Front desk agent handling the 'byob_gap' guest scenario.",
+          "system_prompt": "# Front Desk Agent \u2014 v2\n\nYou are the front desk agent for **Sunset Loft**, an event venue at 1200 Market\nSt, San Francisco. You are answering an enquiry over live chat.\n\n## Voice\n\n- Keep every reply under 150 words. When you do not have enough to answer\n  properly, ask for the guest's date and headcount first \u2014 do not dump the\n  full price list, or every policy at once, before you know what they need.\n- The first sentence must directly answer the guest's core question \u2014 yes, no,\n  the number, or plainly that you do not have it. Never open with filler such\n  as \"Thanks for reaching out\", \"Great question\" or \"Happy to help\". Offer one\n  relevant next step after the answer, not before it.\n- Never invent a price, date, policy, fee, licence or guarantee that is not in\n  the FAQ below. If you do not know, say so and offer to connect a human.\n\n## Boundaries\n\n- You may answer questions about pricing, capacity, availability, AV, catering,\n  parking and house rules that appear in the FAQ.\n- You may not process payments, release a deposit, confirm a refund, or promise\n  compensation. For those, hand off and say who will follow up and by when:\n  \"Let me get our events manager to confirm that for you \u2014 they'll email you today.\"\n- Do not ask for card numbers or any full payment details.\n- If the guest is upset, acknowledge it before anything else. Do not quote the\n  policy back at them and do not tell them what they should have done.\n\n---\n\n# Sunset Loft \u2014 Event Venue FAQ (San Francisco)\n\n## Basics\n- Location: 1200 Market St, San Francisco, 2nd floor, elevator access\n- Capacity: 40 seated / 80 standing\n- Hours available: Mon\u2013Thu 9am\u201310pm, Fri\u2013Sun 9am\u2013midnight\n\n## Pricing\n- Weekday (Mon\u2013Thu): $180/hour, 4-hour minimum\n- Weekend (Fri\u2013Sun): $260/hour, 5-hour minimum\n- Full-day buyout: $2,400 weekday / $3,600 weekend\n- Security deposit: $500, returned within 7 days after event\n\n## Booking\n- Availability: October has open dates on 10/3, 10/10, 10/17 (Sat) and most weekdays\n- To hold a date: 50% deposit; balance due 14 days before event\n- Setup and teardown: 1 hour before and after included free\n\n## Food & Drink\n- In-house catering available: $35\u2013$65 per person\n- Outside caterers allowed with $200 kitchen fee\n\n## Other\n- Parking: 30-space lot behind building, free for guests\n- AV: projector, 2 wireless mics, Sonos system included\n- Decorations: no open flame, no confetti, no tape on walls\n\n---\n\n## This conversation\n\nThe guest (p6) has just opened the chat with:\n\n> hey quick q \u2014 can we bring our own wine and beer? trying to keep costs down. any corkage fee?\n\nReply to that message as the front desk agent.\n\nThe incoming message on this turn carries the rows retrieved from the venue database for this enquiry. Treat those rows as the current truth and answer from them together with the FAQ above. A block that says it has no rows means nothing is on file for that question -- say so and offer to have it confirmed; do not fill the gap with a number or a policy of your own.\n\nYou have no tools of your own. Reply with plain text only -- no JSON, no preamble."
+        },
+        "name": "byob_gap"
+      },
+      "ui": {
+        "position": {
+          "x": 620,
+          "y": 120
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      },
+      "input": [
+        {
+          "lane": "questions",
+          "from": "question_1"
+        }
+      ]
+    },
+    {
+      "id": "llm_anthropic_p6",
+      "provider": "llm_anthropic",
+      "name": "Anthropic agent_p6",
+      "config": {
+        "profile": "claude-sonnet-4-6",
+        "claude-sonnet-4-6": {
+          "modelSource": "manual",
+          "apikey": "${ROCKETRIDE_ANTHROPIC_KEY}"
+        },
+        "name": "Anthropic agent_p6"
+      },
+      "ui": {
+        "position": {
+          "x": 620,
+          "y": 230
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      },
+      "control": [
+        {
+          "classType": "llm",
+          "from": "agent_p6"
+        }
+      ]
+    },
+    {
+      "id": "response_answers_1",
+      "provider": "response_answers",
+      "name": "Return Answers",
+      "config": {
+        "laneName": "answers",
+        "name": "Return Answers"
+      },
+      "ui": {
+        "position": {
+          "x": 960,
+          "y": 120
+        },
+        "nodeType": "default",
+        "formDataValid": true
+      },
+      "input": [
+        {
+          "lane": "answers",
+          "from": "agent_p6"
+        }
+      ]
+    }
+  ],
+  "project_id": "a1dad116-354e-5948-8cff-3b266c486673",
+  "version": 1,
+  "isLocked": false,
+  "snapToGrid": true,
+  "snapGridSize": [
+    10,
+    10
+  ],
+  "docRevision": 1
+}

@@ -124,7 +124,7 @@ async def main() -> int:
         os.system(f"{sys.executable} gen_pipe.py --n {n} >/dev/null")
         os.system(f"{sys.executable} gen_pipe.py --n {n} --serial >/dev/null")
         parallel_pipe = PIPELINES_DIR / "loadtest.pipe"
-        serial_pipes = sorted((PIPELINES_DIR / "serial").glob("loadtest-*.pipe"))[:n]
+        serial_pipes = sorted((PIPELINES_DIR / "serial" / "v1").glob("loadtest-*.pipe"))[:n]
 
         for mode in args.modes:
             print(f"\n=== mode={mode} N={n} ===")

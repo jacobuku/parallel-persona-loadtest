@@ -144,7 +144,7 @@ async def main() -> int:
     uri = os.environ.get("ROCKETRIDE_URI", DEFAULT_URI)
 
     parallel_pipe = PIPELINES_DIR / "loadtest.pipe"
-    serial_pipes = sorted((PIPELINES_DIR / "serial").glob("loadtest-*.pipe"))[: args.n]
+    serial_pipes = sorted((PIPELINES_DIR / "serial" / "v1").glob("loadtest-*.pipe"))[: args.n]
 
     if args.mode in ("parallel", "both") and not parallel_pipe.exists():
         sys.exit(f"[fatal] {parallel_pipe} missing -- run: python gen_pipe.py --n {args.n}")

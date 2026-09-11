@@ -22,7 +22,8 @@ None are guessed.
 
 Usage:
     python gen_pipe.py --n 2                      # parallel pipe, first 2 personas
-    python gen_pipe.py --n 2 --serial             # N single-branch pipes
+    python gen_pipe.py --n 2 --serial             # N single-branch pipes (v1)
+    python gen_pipe.py --n 8 --serial --prompt-version v2
 """
 
 from __future__ import annotations
@@ -36,8 +37,20 @@ from typing import Any
 ROOT = Path(__file__).resolve().parent
 PERSONAS_PATH = ROOT / "personas.json"
 FAQ_PATH = ROOT / "faq.md"
-FRONTDESK_PATH = ROOT / "prompts" / "frontdesk_v1.md"
 PIPELINES_DIR = ROOT / "pipelines"
+
+# The front-desk prompt is versioned: prompts/frontdesk_<version>.md. Generated
+# pipes are kept apart by version too, so a v1 and a v2 run never read each
+# other's .pipe files.
+DEFAULT_PROMPT_VERSION = "v1"
+
+
+def frontdesk_path(version: str) -> Path:
+    return ROOT / "prompts" / f"frontdesk_{version}.md"
+
+
+def serial_dir(version: str) -> Path:
+    return PIPELINES_DIR / "serial" / version
 
 # Anthropic profile name as it appears in the workshop pipes.
 LLM_PROFILE = "claude-sonnet-4-6"
@@ -49,18 +62,24 @@ LLM_PROFILE = "claude-sonnet-4-6"
 PROJECT_NS = uuid.UUID("3e8b17a0-6c24-4f5b-9d81-0a7e5c42d9f1")
 
 
-def project_id_for(personas: list[dict[str, Any]]) -> str:
-    """Deterministic, unique per branch set, so regenerating is reproducible."""
-    return str(uuid.uuid5(PROJECT_NS, ",".join(p["id"] for p in personas)))
+def project_id_for(personas: list[dict[str, Any]], version: str) -> str:
+    """Deterministic, unique per (branch set, prompt version).
+
+    The version is part of the key so the v1 and v2 pipe for the same persona
+    get different ids -- the engine keys a running pipeline by project_id, and
+    two pipes sharing one id cannot run at the same time.
+    """
+    return str(uuid.uuid5(PROJECT_NS, version + ":" + ",".join(p["id"] for p in personas)))
 
 # Canvas spacing, purely cosmetic.
 X_WEBHOOK, X_QUESTION, X_AGENT, X_LLM, X_RESPONSE = 50, 320, 620, 620, 960
 Y_TOP, Y_STEP = 120, 260
 
 
-def load_inputs() -> tuple[list[dict[str, Any]], str, str]:
+def load_inputs(version: str = DEFAULT_PROMPT_VERSION) -> tuple[list[dict[str, Any]], str, str]:
     """Read the three source documents, failing loudly if any is missing."""
-    missing = [p for p in (PERSONAS_PATH, FAQ_PATH, FRONTDESK_PATH) if not p.exists()]
+    frontdesk = frontdesk_path(version)
+    missing = [p for p in (PERSONAS_PATH, FAQ_PATH, frontdesk) if not p.exists()]
     if missing:
         raise SystemExit("[fatal] missing input(s): " + ", ".join(str(p) for p in missing))
 
@@ -72,7 +91,7 @@ def load_inputs() -> tuple[list[dict[str, Any]], str, str]:
             if not isinstance(p, dict) or not p.get(field):
                 raise SystemExit(f"[fatal] personas.json[{i}] is missing '{field}'")
 
-    return personas, FAQ_PATH.read_text(encoding="utf-8"), FRONTDESK_PATH.read_text(encoding="utf-8")
+    return personas, FAQ_PATH.read_text(encoding="utf-8"), frontdesk.read_text(encoding="utf-8")
 
 
 def build_system_prompt(frontdesk: str, faq: str, persona: dict[str, Any]) -> str:
@@ -132,7 +151,8 @@ def llm_node(node_id: str, agent_id: str, y: int) -> dict[str, Any]:
     }
 
 
-def build_pipeline(personas: list[dict[str, Any]], faq: str, frontdesk: str) -> dict[str, Any]:
+def build_pipeline(personas: list[dict[str, Any]], faq: str, frontdesk: str,
+                   version: str = DEFAULT_PROMPT_VERSION) -> dict[str, Any]:
     """Assemble the full component list for the given personas."""
     components: list[dict[str, Any]] = [
         {
@@ -177,7 +197,7 @@ def build_pipeline(personas: list[dict[str, Any]], faq: str, frontdesk: str) -> 
 
     return {
         "components": components,
-        "project_id": project_id_for(personas),
+        "project_id": project_id_for(personas, version),
         "version": 1,
         "isLocked": False,
         "snapToGrid": True,
@@ -195,13 +215,17 @@ def write_pipe(pipeline: dict[str, Any], path: Path) -> Path:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--n", type=int, default=2, help="number of persona branches (default 2)")
+    ap.add_argument("--prompt-version", default=DEFAULT_PROMPT_VERSION,
+                    help="reads prompts/frontdesk_<version>.md, writes pipelines/serial/<version>/")
     ap.add_argument("--serial", action="store_true",
                     help="emit N single-branch pipes instead of one N-branch pipe")
     ap.add_argument("--out", type=Path, default=PIPELINES_DIR / "loadtest.pipe")
-    ap.add_argument("--outdir", type=Path, default=PIPELINES_DIR / "serial")
+    ap.add_argument("--outdir", type=Path, default=None)
     args = ap.parse_args()
 
-    personas, faq, frontdesk = load_inputs()
+    version = args.prompt_version
+    outdir = args.outdir or serial_dir(version)
+    personas, faq, frontdesk = load_inputs(version)
     if args.n > len(personas):
         raise SystemExit(f"[fatal] --n {args.n} exceeds {len(personas)} personas in personas.json")
     selected = personas[: args.n]
@@ -209,16 +233,17 @@ def main() -> int:
     if args.serial:
         written = []
         for persona in selected:
-            path = args.outdir / f"loadtest-{persona['id']}.pipe"
-            written.append(write_pipe(build_pipeline([persona], faq, frontdesk), path))
-        print(f"wrote {len(written)} single-branch pipes to {args.outdir}/")
+            path = outdir / f"loadtest-{persona['id']}.pipe"
+            written.append(write_pipe(build_pipeline([persona], faq, frontdesk, version), path))
+        print(f"wrote {len(written)} single-branch pipes ({version}) to {outdir}/")
         for p in written:
             print(f"  {p.relative_to(ROOT)}")
     else:
-        path = write_pipe(build_pipeline(selected, faq, frontdesk), args.out)
+        pipeline = build_pipeline(selected, faq, frontdesk, version)
+        path = write_pipe(pipeline, args.out)
         ids = ", ".join(p["id"] for p in selected)
-        print(f"wrote {path.relative_to(ROOT)}: {args.n} parallel branches ({ids})")
-        print(f"  components: {len(build_pipeline(selected, faq, frontdesk)['components'])}")
+        print(f"wrote {path.relative_to(ROOT)}: {args.n} parallel branches ({ids}), {version}")
+        print(f"  components: {len(pipeline['components'])}")
 
     return 0
 

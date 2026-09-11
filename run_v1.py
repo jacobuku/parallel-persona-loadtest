@@ -45,7 +45,7 @@ import venue_db
 from run_loadtest import WEBHOOK_SOURCE_ID, answer_texts, ensure_ca_bundle, require_env
 
 ROOT = Path(__file__).resolve().parent
-PIPELINES_DIR = ROOT / "pipelines" / "serial"
+SERIAL_DIR = ROOT / "pipelines" / "serial"
 DEFAULT_URI = "https://api.rocketride.ai"
 TELEMETRY_TABLE = "persona_runs"
 
@@ -176,9 +176,11 @@ async def run_turn(persona: dict[str, Any], ctx: dict[str, Any]) -> TurnResult:
         out.retrieved = venue_db.format_retrieved(results)
         out.question = TRIGGER_HEADER + out.retrieved
 
-        pipe = PIPELINES_DIR / f"loadtest-{pid}.pipe"
+        pipe = SERIAL_DIR / ctx["prompt_version"] / f"loadtest-{pid}.pipe"
         if not pipe.exists():
-            raise FileNotFoundError(f"{pipe} missing -- run: python gen_pipe.py --n 8 --serial")
+            raise FileNotFoundError(
+                f"{pipe} missing -- run: python gen_pipe.py --n 8 --serial "
+                f"--prompt-version {ctx['prompt_version']}")
 
         out.reply, out.pipeline_s = await run_pipeline(
             ctx["uri"], ctx["rr_key"], pipe, out.question, ctx["pipe_env"]
