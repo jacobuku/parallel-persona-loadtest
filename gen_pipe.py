@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -41,8 +42,16 @@ PIPELINES_DIR = ROOT / "pipelines"
 # Anthropic profile name as it appears in the workshop pipes.
 LLM_PROFILE = "claude-sonnet-4-6"
 
-# Stable project id for every generated pipe.
-PROJECT_ID = "3e8b17a0-6c24-4f5b-9d81-0a7e5c42d9f1"
+# Namespace for per-pipe project ids. Each generated pipe gets its OWN
+# project_id derived from the branches it contains: the engine keys a running
+# pipeline by project_id, so N pipes sharing one id cannot run concurrently --
+# `use()` rejects the second with "Pipeline is already running."
+PROJECT_NS = uuid.UUID("3e8b17a0-6c24-4f5b-9d81-0a7e5c42d9f1")
+
+
+def project_id_for(personas: list[dict[str, Any]]) -> str:
+    """Deterministic, unique per branch set, so regenerating is reproducible."""
+    return str(uuid.uuid5(PROJECT_NS, ",".join(p["id"] for p in personas)))
 
 # Canvas spacing, purely cosmetic.
 X_WEBHOOK, X_QUESTION, X_AGENT, X_LLM, X_RESPONSE = 50, 320, 620, 620, 960
@@ -163,7 +172,7 @@ def build_pipeline(personas: list[dict[str, Any]], faq: str, frontdesk: str) -> 
 
     return {
         "components": components,
-        "project_id": PROJECT_ID,
+        "project_id": project_id_for(personas),
         "version": 1,
         "isLocked": False,
         "snapToGrid": True,
