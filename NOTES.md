@@ -22,6 +22,12 @@ ConnectionError: server rejected WebSocket connection: HTTP 200
 Use `https://api.rocketride.ai` — also the SDK's own `CONST_DEFAULT_WEB_CLOUD`.
 The client normalizes it to `wss://api.rocketride.ai/task/service`.
 
+**There is no staging host for this project — Cloud is `api.rocketride.ai`.**
+`ROCKETRIDE_URI` in `.env` is set to it, and every script defaults to it
+(`DEFAULT_URI`). Do not point anything at a staging/alternate endpoint; nothing
+here has ever been verified against one. Re-confirmed end to end on 2026-09-11
+by `smoke_rr.py` (connect → `use()` → `send()` → answer) against a rotated key set.
+
 ### 2. `llm_*` nodes attach to an agent as a control resource — they are not data-lane nodes
 
 Across all four workshop `.pipe` files, an `llm_anthropic` node **never** has an
@@ -214,6 +220,14 @@ Benchmark and probe results go to the Hotdata database `loadtest_telemetry`
 - `loadtest_telemetry.public.runs` -- one row per benchmark run, `mode` column
   is `serial` / `A` / `B`. Written by `telemetry.record()` from `bench.py`.
 - `loadtest_telemetry.public.findings` -- one row per C/D probe result.
+
+That id lives in `.env` as `HOTDATA_TELEMETRY_DB_ID` and **the database is
+reused, never recreated** — it holds the accumulated A/B timings, and a new run
+is only comparable against the rows already in it. `telemetry.ensure_database()`
+reuses the id when it is set, creates a database (with the `3d` TTL and both
+tables) only when it is unset, and *refuses* — writing nothing — when the id is
+set but names no database, rather than silently standing up an empty
+replacement.
 
 Instant databases reject `INSERT`/DDL over the query API, so rows are staged to
 a local JSON file and loaded with
