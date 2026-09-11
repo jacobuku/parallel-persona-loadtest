@@ -273,6 +273,33 @@ removed for no longer existed.
 is reported as **skipped** in the transcript rather than silently ignored.
 Nothing is lost: p1's `must_contain_any` already requires a real price.
 
+### 13. v1 vs v2: the prompt change fixed one failure and hid the other
+
+Two Voice rules changed in `prompts/frontdesk_v2.md` (first sentence must answer
+the question, no filler opener; under 150 words, ask for date and headcount
+before dumping prices). Nothing else in the prompt, the FAQ, the personas or the
+grader moved. Both runs N=8, concurrency 8, nothing rate limited.
+
+| | turns | rule_pass | llm_pass | agree | avg words | wall clock |
+| --- | --- | --- | --- | --- | --- | --- |
+| v1 | 8 | 6/8 | 6/8 | 8/8 | 112.8 | 81.0 s |
+| v2 | 8 | **8/8** | **7/8** | 7/8 | **84.5** | 81.3 s |
+
+p5 is a clean fix -- it now opens with the answer. Every persona got shorter;
+p4 went 178 -> 100 words.
+
+**p7 is the one to watch.** Its word count fell 154 -> 110 and it does now ask
+for date and headcount, so *every deterministic rule passes* -- but the judge
+still fails it, because it asks at the **end**, after listing every price. The
+rules can see length and presence; they cannot see order. This is the run's only
+`agree = false` row, and it is the reason for keeping two verdicts: a rule-only
+score would have reported 8/8 and called the problem solved.
+
+Pipes are now generated per prompt version into `pipelines/serial/<version>/`,
+and the version is folded into the `uuid5` project_id -- without that, the v1
+and v2 pipe for one persona would share an id and could not run at the same
+time (fact 8).
+
 ---
 
 ## Telemetry
